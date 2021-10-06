@@ -31,6 +31,7 @@ breed [speculations speculation]
 
 to setup
   clear-all
+  set nappe 1000
   let _l-capiate [20 18 15 11]
   let _l-parcelle [3 2 1 1]
   let _l-color n-of 4 base-colors
@@ -39,21 +40,23 @@ to setup
     set my-owner 999
     set pcolor white
   ]
-  create-agriculteurs 4 [
-    hide-turtle
-    set capital first _l-capiate
-    set color first _l-color
-    set _l-color but-first _l-color
-    set _l-capiate but-first _l-capiate
-    ;; create plots
-    ask n-of (first _l-parcelle) patches with [my-owner = 999][
-      set pcolor [color] of myself
-      set my-owner [who] of myself
-      set type-irrigation "seau"
-      set puis? True
-      set prof-puis 5
+  foreach _l-parcelle [ x ->
+    create-agriculteurs 1 [
+      hide-turtle
+      set capital first _l-capiate
+      set color first _l-color
+      set _l-color but-first _l-color
+      set _l-capiate but-first _l-capiate
+      ;; create plots
+      ask n-of x patches with [my-owner = 999][
+        set pcolor [color] of myself
+        set my-owner [who] of myself
+        set type-irrigation "seau"
+      ]
+      set myPlots patches with[my-owner = [who] of myself]
     ]
-    set myPlots patches with[my-owner = [who] of myself]
+
+
 
   ]
   reset-ticks
@@ -63,8 +66,12 @@ end
 to go
   ;;Un tick est une saison de culture
   ;; une année est composer contre saison sèche froide et une saison sèche chaude
+  if(nappe < 20)[stop]
   ask agriculteurs [
     ;investissmement un tick sur deux
+    ;; investissement sur l'exort
+    invest-exhaure
+    ;; investissement sur une nouvelle parcelle
     ;choix des spéculation
     ;C'est dans cette procedure que beaucoup de choses se joue
     install-spec
@@ -79,9 +86,24 @@ to go
   tick
 end
 
+to invest-exhaure ; agriculteur context
+  ;investissement dans du surcreusage
+
+   ifelse ( (count (myPlots with[puis? != True])  ) > 0)[
+    ; s'il n'y a pas de puis
+    set capital capital - 2
+    ask myPlots with[puis? != True][
+           set puis? True
+           set prof-puis 5
+          ]
+    ][
+
+  ]
+  ;investissement dans le type d'exhaure
+end
+
 to install-spec ;agriculteur context
   ;; installation des culture
-  ;;
   let _l-spec ["create-spec-oignon" "create-spec-piment" "create-spec-aubgergine" "create-spec-pdt" "create-spec-carotte" "create-spec-chou"]
   let _one-spec first shuffle _l-spec
   ask myPlots with[not any? speculations-here][
@@ -92,8 +114,13 @@ to install-spec ;agriculteur context
 end
 
 to preleve-eau ;; agriculteur context
-  set nappe nappe - besoin-eau-tick
-  set eau-prélevé eau-prélevé + besoin-eau-tick
+  ifelse(nappe > besoin-eau-tick )[
+    set nappe nappe - besoin-eau-tick
+    set eau-prélevé eau-prélevé + besoin-eau-tick
+  ][
+    ask one-of (speculations-on myPlots) with-max[besoin-eau] [die]
+    set capital capital - 10
+  ]
 end
 
 to update-capital
@@ -229,6 +256,10 @@ to create-spec-chou
       ]
     ]
 end
+
+to-report prix-surcreusage [_profondeur]
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -275,13 +306,13 @@ NIL
 1
 
 BUTTON
-117
-42
-180
-75
+110
+10
+173
+43
 NIL
 go
-NIL
+T
 1
 T
 OBSERVER
@@ -326,6 +357,34 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot sum[capital] of agriculteurs"
+
+MONITOR
+750
+38
+807
+83
+NIL
+nappe
+17
+1
+11
+
+BUTTON
+110
+45
+173
+78
+NIL
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -686,5 +745,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+1
 @#$#@#$#@
